@@ -105,8 +105,11 @@ future_cashflow["MOD"] = future_cashflow.drop("PV", axis = 1).sum(axis = 1)
 present_value = future_cashflow["PV"].sum()
 
 # Portfolio value
-portfolio_value = amount_received + present_value*(1-default_rate)
-unrisked_portfolio_value = amount_received + present_value
+'''
+Portfolio value estimated as amount received (principal + interest + fines) till date.
+It can also be calculated as amount received + discouted values of future EMIs
+'''
+portfolio_value = amount_received
 
 ## Return metrics
 
@@ -116,22 +119,16 @@ print("Return on Investment: {0}%".format(np.round(roi*100, 1)))
 
 # CAGR
 n = (account_details["Date"].max() - account_details["Date"].min()).days/365
-
 cagr = np.power(portfolio_value/amount_added, 1/n) - 1
-cagr_unrisked = np.power(unrisked_portfolio_value/amount_added, 1/n) - 1
-
 print("Compound annual growth rate: {0}%".format(np.round(cagr*100, 1)))
 
 # XIRR
-
 dates = list(account_details.loc[account_details["Category"] == "Investment", "Date"])
 dates.append(account_details["Date"].max())
-
 values = list(account_details.loc[account_details["Category"] == "Investment", "Credit"])
 values.append(-portfolio_value)
 
 xirr = calc_xirr(values, dates)
-
 print("Extended internal rate of return: {0}%".format(np.round(xirr*100, 1)))
 
 #%% Scratch code
