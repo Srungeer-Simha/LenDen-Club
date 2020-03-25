@@ -89,7 +89,7 @@ amount_added = account_details.loc[account_details["Category"] == "Investment", 
 default_rate = invest_hist.loc[invest_hist["Loan Status"] == "Default", "Loan ID"].nunique()/invest_hist["Loan ID"].nunique()
 
 # Future cashflow
-open_loans = invest_hist[invest_hist["Loan Status"].isin(["Regular", "Delayed"])]
+open_loans = invest_hist[invest_hist["Loan Status"].isin(["Regular", "Delayed", "Investment"])]
 open_loans["Pending EMIs"] = open_loans["Tenure (months)"] - open_loans["Paid EMI Count"]
 
 future_cashflow = []
@@ -136,8 +136,15 @@ print("Extended internal rate of return: {0}%".format(np.round(xirr*100, 1)))
 
 #%% Scratch code
 
+# Alternative calculation
 invest_hist["Principal Repaid"].sum()
 invest_hist["Interest Repaid"].sum()
 invest_hist["Principal Outstanding"].sum()
 
+# Backcalcualting Lenden's XIRR
 invest_hist["Principal Repaid"].sum()-invest_hist["Interest Repaid"].sum() + 39.37
+
+# Money received in Mar 2020
+account_details.loc[(account_details["Date"].dt.month == 3) & (
+                     account_details["Date"].dt.year == 2020) & (
+                     account_details["Category"] == "Payment"), "Credit"].sum()
