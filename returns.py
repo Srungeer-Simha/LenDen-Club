@@ -33,7 +33,7 @@ sru_dir = "C:\\Apps\\Srungeer\\Documents\\Personal\\Personal Finance\\LenDen Clu
 account_list = []
 invest_list = []
 
-for dir in [sru_dir]:
+for dir in [sru_dir, dad_dir]:
     for filename in os.listdir(dir):
         if "ACCOUNT_STATEMENT" in filename:
             df = pd.read_csv(dir + "\\" + filename)
@@ -76,11 +76,20 @@ invest_hist.loc[invest_hist["Status"].isin(["confirmed", "committed", "disbursed
 invest_hist.loc[invest_hist["Status"].isin(["closed", "prepaid"]), "Loan Status"] = "Closed"
 invest_hist.loc[invest_hist["Status"] == "delayed 1", "Loan Status"] = "Delayed"
 
+# Pending EMI count
+invest_hist["Pending EMIs"] = invest_hist["Tenure (months)"] - invest_hist["Paid EMI Count"]
+
+# Interest Outstanding
+invest_hist["Interest Outstanding"] = (invest_hist["EMI"]*invest_hist["Tenure (months)"]) \
+                                        - invest_hist["Principal Repaid"] \
+                                        - invest_hist["Interest Repaid"] \
+                                        - invest_hist["Principal Outstanding"]
+
 
 #%% Calculations
 
 # Amount received till date
-amount_received = account_details.loc[account_details["Category"] == "Payment", "Credit"].sum()
+amount_received = invest_hist["Interest Repaid"].sum() + invest_hist["Principal Repaid"].sum()
 
 # Amount invested
 amount_added = account_details.loc[account_details["Category"] == "Investment", "Credit"].sum()
@@ -90,7 +99,6 @@ default_rate = invest_hist.loc[invest_hist["Loan Status"] == "Default", "Loan ID
 
 # Future cashflow
 open_loans = invest_hist[invest_hist["Loan Status"].isin(["Regular", "Delayed", "Investment"])]
-open_loans["Pending EMIs"] = open_loans["Tenure (months)"] - open_loans["Paid EMI Count"]
 
 future_cashflow = []
 for loan in open_loans["Loan ID"]:
@@ -103,13 +111,20 @@ future_cashflow["PV"] = future_cashflow.apply(lambda x: np.npv(0.08/12, pd.conca
 future_cashflow["MOD"] = future_cashflow.drop("PV", axis = 1).sum(axis = 1)
 
 present_value = future_cashflow["PV"].sum()
+#present_value = future_cashflow["MOD"].sum()
 
 # Portfolio value
 '''
-Portfolio value estimated as amount received (principal + interest + fines) till date.
-It can also be calculated as amount received + discouted values of future EMIs
+Portfolio value is sum of 
 '''
-portfolio_value = amount_received
+portfolio_value = invest_hist.loc[invest_hist["Loan Status"] != "Default", 
+                ["Principal Outstanding", "Interest Outstanding"]].sum().sum()
+#portfolio_value = portfolio_value*(1-default_rate)
+
+# Bad loan amount
+
+default_amount = invest_hist.loc[invest_hist["Loan Status"] == "Default", 
+                ["Principal Outstanding", "Interest Outstanding"]].sum().sum()
 
 ## Return metrics
 
@@ -145,3 +160,9 @@ invest_hist["Principal Repaid"].sum()-invest_hist["Interest Repaid"].sum() + 39.
 account_details.loc[(account_details["Date"].dt.month == 3) & (
                      account_details["Date"].dt.year == 2020) & (
                      account_details["Category"] == "Payment"), "Credit"].sum()
+
+np.sum(invest_hist["EMI"]*invest_hist["Pending EMIs"])
+
+# Cross checks
+invest_hist["Interest Outstanding"].sum() + invest_hist["Principal Outstanding"].sum()
+np.sum(invest_hist["EMI"]*invest_hist["Pending EMIs"])
